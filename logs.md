@@ -35,11 +35,18 @@ This file tracks the implementation progress of the project **Graph-Based Analys
 - Created `import_relationships.cypher` to import `FOLLOWS`, `RETWEETS`, `REPLIES_TO`, and `MENTIONS` relationships from the processed CSV files.
 - Structured the Cypher files so that nodes are imported before relationships, following the standard Neo4j CSV import workflow.
 
+### 4. Neo4j import executed and first validation completed
+- Copied the processed CSV files into the Neo4j import directory.
+- Executed `constraints.cypher` in Neo4j.
+- Executed `import_nodes.cypher` in Neo4j.
+- Executed `import_relationships.cypher` in Neo4j using batched transactions to avoid memory pool errors on large relationship files.
+- Validated the imported graph by checking node and relationship counts.
+- Tested the first queries in Neo4j Query tab / Browser to verify that the imported graph structure and relationships were accessible.
+
 ## Next Planned Steps
-- Copy the processed CSV files into the Neo4j import directory.
-- Execute `constraints.cypher` in Neo4j.
-- Execute `import_nodes.cypher` in Neo4j.
-- Execute `import_relationships.cypher` in Neo4j.
-- Validate the imported graph by checking node and relationship counts.
-- Test the first queries in Neo4j Browser.
 - Define the first analysis queries for the oral presentation.
+- Capture screenshots of representative graph views and query results from Neo4j.
+- Organize the main findings into a clear structure for the presentation.
+- Prepare a short explanation of the graph schema, import workflow, and validation steps.
+- Draft the discussion of scalability, distributed querying, availability, and consistency model in Neo4j.
+- Refine the repository documentation so the full workflow is easy to reproduce.
