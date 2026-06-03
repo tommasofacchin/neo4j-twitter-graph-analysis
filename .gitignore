@@ -1,2 +1,4 @@
 data/processed/*.csv
 data/raw/*.edgelist
+
+data/*
