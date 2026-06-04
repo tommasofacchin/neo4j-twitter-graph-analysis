@@ -8,8 +8,9 @@ This file tracks the implementation progress of the project **Graph-Based Analys
 - `data/raw/`
 - `data/processed/`: Neo4j-ready CSV files generated
 - `scripts/`
-- `cypher/`: Cypher scripts created for constraints and data import
+- `cypher/`: Cypher scripts created for constraints, data import, and analysis queries
 
+---
 
 ## Update Log
 
@@ -43,8 +44,18 @@ This file tracks the implementation progress of the project **Graph-Based Analys
 - Validated the imported graph by checking node and relationship counts.
 - Tested the first queries in Neo4j Query tab / Browser to verify that the imported graph structure and relationships were accessible.
 
+### 5. Analysis queries defined
+- Created `analysis_queries.cypher` in the `cypher/` folder.
+- Implemented five analysis queries to support the oral presentation:
+  - Most connected users by follow degree.
+  - Most mentioned users in the interaction graph.
+  - Strongly interacting user pairs across MENTIONS, REPLIES_TO, and RETWEETS.
+  - Top retweeters per original author.
+  - Ego-network exploration around a specific user.
+
+---
+
 ## Next Planned Steps
-- Define the first analysis queries for the oral presentation.
 - Capture screenshots of representative graph views and query results from Neo4j.
 - Organize the main findings into a clear structure for the presentation.
 - Prepare a short explanation of the graph schema, import workflow, and validation steps.
