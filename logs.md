@@ -9,6 +9,7 @@ This file tracks the implementation progress of the project **Graph-Based Analys
 - `data/processed/`: Neo4j-ready CSV files generated
 - `scripts/`
 - `cypher/`: Cypher scripts created for constraints, data import, and analysis queries
+- `screenshots/`: Screenshots of key queries and graph views captured from Neo4j Browser
 
 ---
 
@@ -47,16 +48,27 @@ This file tracks the implementation progress of the project **Graph-Based Analys
 ### 5. Analysis queries defined
 - Created `analysis_queries.cypher` in the `cypher/` folder.
 - Implemented five analysis queries to support the oral presentation:
-  - Most connected users by follow degree.
+  - Most followed users.
   - Most mentioned users in the interaction graph.
   - Strongly interacting user pairs across MENTIONS, REPLIES_TO, and RETWEETS.
-  - Top retweeters per original author.
+  - Most retweeted authors.
   - Ego-network exploration around a specific user.
+
+### 6. Screenshots captured
+
+- Created the `screenshots/` folder in the project root.
+- Captured table-view screenshots for:
+  - Query 1 – Most followed users (in-degree).
+  - Query 2 – Most mentioned users.
+  - Query 3 – Strongly interacting user pairs.
+  - Query 4 – Most retweeted authors.
+- Captured a graph-view screenshot for:
+  - Query 5 – Ego-network around a specific user.
+- Verified that each screenshot clearly shows both the Cypher query and the corresponding result, so they can be used directly in the oral presentation slides.
 
 ---
 
 ## Next Planned Steps
-- Capture screenshots of representative graph views and query results from Neo4j.
 - Organize the main findings into a clear structure for the presentation.
 - Prepare a short explanation of the graph schema, import workflow, and validation steps.
 - Draft the discussion of scalability, distributed querying, availability, and consistency model in Neo4j.

@@ -1,16 +1,10 @@
 
-// Query 1 – Most connected users by degree
-MATCH (u:User)
-OPTIONAL MATCH (u)-[:FOLLOWS]->(out:User)
-OPTIONAL MATCH (in:User)-[:FOLLOWS]->(u)
-WITH u,
-     count(DISTINCT out) AS outDegree,
-     count(DISTINCT in)  AS inDegree
-RETURN u.userId        AS userId,
-       inDegree        AS followers,
-       outDegree       AS following,
-       (inDegree + outDegree) AS totalDegree
-ORDER BY totalDegree DESC
+// Query 1 – Most followed users (in-degree)
+MATCH (f:User)-[:FOLLOWS]->(u:User)
+WITH u, count(DISTINCT f) AS inDegree
+RETURN u.userId AS userId,
+       inDegree AS followers
+ORDER BY followers DESC
 LIMIT 10;
 
 
@@ -33,20 +27,17 @@ ORDER BY interactions DESC
 LIMIT 20;
 
 
-// Query 4 – Top retweeters per original author
+// Query 4 – Most retweeted authors
 MATCH (retweeter:User)-[:RETWEETS]->(author:User)
-RETURN author.userId    AS originalAuthor,
-       retweeter.userId AS retweeter,
-       count(*)         AS retweetCount
-ORDER BY retweetCount DESC
-LIMIT 20;
+RETURN author.userId AS originalAuthor,
+       count(*)      AS totalRetweets
+ORDER BY totalRetweets DESC
+LIMIT 10;
 
 
 // Query 5 – Ego-network around a given user
-// Replace $userId with a real id for the demo
-MATCH (u:User {userId: $userId})
-OPTIONAL MATCH (u)-[:FOLLOWS]->(f1:User)
-OPTIONAL MATCH (f2:User)-[:FOLLOWS]->(u)
-RETURN u.userId  AS centerUser,
-       collect(DISTINCT f1.userId) AS following,
-       collect(DISTINCT f2.userId) AS followers;
+MATCH (u:User {userId: "88"})
+OPTIONAL MATCH (u)-[r1:FOLLOWS]->(f1:User)
+OPTIONAL MATCH (f2:User)-[r2:FOLLOWS]->(u)
+RETURN u, f1, f2, r1, r2;
+
