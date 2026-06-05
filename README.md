@@ -245,24 +245,7 @@ This query is used to generate a graph-view screenshot for the presentation and 
 
 ---
 
-## 7. Main findings (for the oral)
-
-The project is not only about importing data. The following findings are discussed in the slides:
-
-1. **Centrality and visibility**  
-   Some users stand out as particularly central or visible, based on follows and mentions.
-
-2. **Strong interaction patterns**  
-   Certain user pairs show repeated interactions across different relationship types, indicating stronger connections.
-
-3. **Local graph structure**  
-   Ego-network visualisations around specific users give an intuitive view of their local neighbourhood and connections.
-
-These findings are summarised in more detail in `findings.md` and backed by screenshots in the `screenshots/` directory.
-
----
-
-## 8. Neo4j architecture
+## 7. Neo4j architecture
 
 Although the prototype runs on a single Neo4j instance and a subset of the data, the oral exam includes a short discussion of how the same design could scale.
 
