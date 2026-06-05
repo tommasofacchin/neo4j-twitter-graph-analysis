@@ -66,10 +66,7 @@ This file tracks the implementation progress of the project **Graph-Based Analys
   - Query 5 – Ego-network around a specific user.
 - Verified that each screenshot clearly shows both the Cypher query and the corresponding result, so they can be used directly in the oral presentation slides.
 
----
 
-## Next Planned Steps
-- Organize the main findings into a clear structure for the presentation.
-- Prepare a short explanation of the graph schema, import workflow, and validation steps.
-- Draft the discussion of scalability, distributed querying, availability, and consistency model in Neo4j.
-- Refine the repository documentation so the full workflow is easy to reproduce.
+### 7. Documentation and presentation structure refined
+- Created `slides/slides.md` with the slide outline and speaker notes.
+- Updated the README with a clear “How to reproduce” section describing preprocessing, import, validation, and analysis steps.

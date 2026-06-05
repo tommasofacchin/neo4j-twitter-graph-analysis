@@ -1,544 +1,283 @@
-# neo4j-twitter-graph-analysis
+# Neo4j Twitter Graph Analysis (Higgs Dataset)
 
-## Project Title
-**Graph-Based Analysis of Twitter Social Networks Using Neo4j**
+This repository contains a small Neo4j-based prototype for analysing a Twitter-like social network built from the Higgs dataset. The goal is to show how a graph database can model users and their interactions, and to answer a few concrete social network analysis questions using Cypher.
 
-## Purpose of the Project
-This project is designed to satisfy the course requirement of investigating one of the proposed DBMSs and using it to solve one or more problems on a selected dataset. The chosen DBMS is Neo4j, and the selected application domain is Twitter social network analysis, which is a natural fit for graph-based modeling because users, tweets, hashtags, and interactions can be represented as nodes and relationships rather than as tables joined through foreign keys.
+The project is designed as a **course project**: it focuses on a subset of the data, a clean graph schema, a reproducible import workflow, and a small set of meaningful queries that are easy to explain during the oral exam.
 
-The project should not be approached as a generic software demo. It should be structured as a course project that demonstrates understanding of both the **DBMS itself** and the **practical use of that DBMS** on a realistic dataset. The oral discussion will evaluate technical implementation and the ability to explain import, scalability, distributed querying, availability, and consistency model choices.
+---
 
-## What the Course Requires
-According to the assignment, the project must include two elements:
-- an investigation of one DBMS among the proposed systems;
-- the use of that DBMS to solve one or more problems on one of the proposed datasets.
+## 1. Project scope
 
-The presentation during the oral can take one of three forms depending on complexity:
-- a feasibility study;
-- a prototype implementation on a subset of the available data;
-- a prototype able to work on the full dataset.
+This project implements a Neo4j prototype for graph-based analysis of Twitter social network data.
 
-For every choice of problem, dataset, and DBMS, the oral must discuss at least:
-- data import;
-- scalability;
-- distributed queries;
-- availability;
-- consistency model.
+- **DBMS:** Neo4j (graph / property graph).
+- **Dataset:** subset of the Higgs Twitter dataset (edge lists).
+- **Entities:** users and their interactions.
+- **Goal:** identify central/visible users, strong interaction patterns, and local ego-networks.
 
-For this project, the best positioning is: **prototype implementation on a subset of the available data, with discussion of how the same design could scale to larger data volumes**. This is both realistic and fully aligned with the assignment structure.
+It is intentionally **not** a full-scale Twitter analytics pipeline. The idea is to have a small but complete workflow that you can load on a laptop, explain in 10–15 minutes, and extend conceptually to larger deployments.
 
-## Why Neo4j Is a Good Choice
-Neo4j is a graph DBMS, so it is especially suitable for social networks, where the most meaningful information is often found in relationships such as follows, mentions, replies, retweets, and shared hashtags. In a Twitter-like dataset, many useful questions are naturally multi-hop graph traversals, such as identifying influential users, finding communities, detecting common interests, or exploring how a topic connects different groups.
+---
 
-This makes Neo4j a defensible and strong choice for the oral because the project can show both:
-- conceptual alignment between the domain and the DBMS model;
-- practical benefits of graph queries over more cumbersome join-heavy relational approaches.
+## 2. Why use Neo4j here?
 
-## Project Goal
-The goal of the project is to build a Neo4j-based prototype capable of importing Twitter social data and answering graph-analysis questions such as:
-- Which users are the most central or most mentioned in the network?
-- Which hashtags are the most common or the most socially widespread?
-- Which users are connected by shared topics or interaction patterns?
-- Which sub-communities emerge from the network structure?
-- How can the data model support exploratory social network analysis?
+Twitter-like data is essentially a graph:
 
-The final result should be a reproducible project with:
-- a clear graph schema;
-- cleaned and structured input files;
-- import scripts or Cypher commands;
-- a set of analysis queries;
-- a discussion of Neo4j architectural characteristics relevant to the course.
+- Nodes are users (and, in richer models, tweets and hashtags).
+- Edges are follows, mentions, replies, retweets, etc.
+- Interesting questions are about relationships and paths: influence, communities, conversation spread.
 
-## Recommended Scope
-A very important success factor is scope control. The project should not try to replicate the full Twitter platform, full tweet ingestion pipelines, or real-time streaming analytics. A university project is stronger when it is technically focused and clearly argued.
+In a relational database you can model this with tables and foreign keys, but many questions turn into long chains of joins. In Neo4j, the same questions can often be expressed as simple pattern matches in Cypher.
 
-A good scope is the following:
-- use a manageable subset of Twitter data, not the entire social network;
-- model users, tweets, hashtags, and a selected set of interactions;
-- implement a complete import and query workflow;
-- discuss scalability and distribution at the Neo4j architecture level, even if the prototype itself runs on a single local instance.
+This prototype uses that advantage in a minimal way: a small schema, a few interaction types, and queries that walk the graph directly.
 
-This keeps the project feasible while still giving enough material for a strong oral discussion.
+---
 
-## Suggested Dataset Strategy
-There are two practical dataset strategies.
+## 3. Graph schema
 
-### Option A: Use an Existing Neo4j Twitter Example
-Neo4j provides a public Twitter graph example that includes a ready-made social network model and example queries, making it a very strong starting point for a course prototype. This is the safest option if the goal is to maximize reliability and reduce the risk of spending too much time on data collection.
+For this prototype we only model users and their interactions. That is enough to show centrality, visibility, and repeated interaction patterns.
 
-Advantages:
-- the model is already aligned with Neo4j concepts;
-- it is easy to demonstrate queries and graph exploration;
-- it provides concrete inspiration for the data structure and analysis tasks.
+### Node type
 
-### Option B: Build a Custom Dataset Subset
-Another option is to gather a smaller public dataset or manually prepare CSV files containing users, tweets, hashtags, and interactions. This gives more ownership over the data preparation phase, which can be helpful during the oral when discussing import and preprocessing choices.
+- `User`
+  - `userId` (string, unique identifier from the dataset)
+  - `screenName` (optional)
+  - `name` (optional)
+  - other optional properties when available (e.g. followers count)
 
-Advantages:
-- stronger evidence of independent implementation;
-- more control over which entities and relations are included;
-- easier to explain the full data-cleaning pipeline.
+### Relationship types
 
-For this course project, **Option B is excellent if enough time is available**, while **Option A is the safest path if time is limited**.
+- `(:User)-[:FOLLOWS]->(:User)`  
+  A user follows another user.
 
-## Recommended Graph Model
-A clean graph schema is one of the most important parts of the project. The model should remain simple enough to explain in two minutes, but rich enough to support meaningful queries.
+- `(:User)-[:RETWEETS]->(:User)`  
+  A user retweets another user’s content.
 
-### Core Node Types
-| Node label | Meaning | Recommended properties |
-|---|---|---|
-| `User` | A Twitter user | `userId`, `screenName`, `name`, `followersCount` |
-| `Tweet` | A tweet/post | `tweetId`, `text`, `createdAt`, `lang`, `retweetCount`, `likeCount` |
-| `Hashtag` | A hashtag/topic | `name` |
+- `(:User)-[:REPLIESTO]->(:User)`  
+  A user replies to another user.
 
-### Core Relationship Types
-| Relationship | From | To | Meaning |
-|---|---|---|---|
-| `POSTED` | `User` | `Tweet` | A user published a tweet |
-| `MENTIONS` | `Tweet` | `User` | A tweet mentions a user |
-| `TAGS` | `Tweet` | `Hashtag` | A tweet contains a hashtag |
-| `REPLIES_TO` | `Tweet` | `Tweet` | One tweet replies to another |
-| `RETWEETS` | `Tweet` | `Tweet` | One tweet retweets another |
-| `FOLLOWS` | `User` | `User` | A user follows another user |
+- `(:User)-[:MENTIONS]->(:User)`  
+  A user mentions another user.
 
-You do not need all relationship types for the first prototype. A very strong minimal version uses only `POSTED`, `MENTIONS`, and `TAGS`, because those already allow non-trivial traversal queries.
+The model is deliberately compact:
 
-## Minimal Viable Project vs Stronger Version
-The project can be built in two levels.
+- only one node label (`User`),
+- a small set of directed relationship types,
+- all relationships created using `userId` as the stable key.
 
-### Minimal Viable Version
-- `User`, `Tweet`, `Hashtag` nodes;
-- `POSTED`, `MENTIONS`, `TAGS` relationships;
-- CSV import;
-- 4 to 5 Cypher analysis queries;
-- screenshots from Neo4j Browser.
+It can be extended later (e.g. adding `Tweet` and `Hashtag` nodes), but this minimal version is enough for the exam.
 
-### Stronger Version
-- add `REPLIES_TO` and `FOLLOWS`;
-- include one visual exploration section;
-- compare alternative schema choices;
-- discuss how clustering would support larger deployments;
-- optionally include query profiling or basic performance observations.
+---
 
-The stronger version is ideal if aiming for the upper grade range because it better supports a detailed discussion of Neo4j features and design choices.
+## 4. Repository structure
 
-## Problems the Project Should Solve
-The assignment requires solving one or more problems using the chosen DBMS. The project should therefore define explicit analytical questions rather than only loading data and browsing the graph visually.
-
-Recommended project problems:
-1. Identify the most influential or most visible users in the network through mention frequency or interaction degree.
-2. Identify the most widely used hashtags and the hashtags that connect many different users.
-3. Discover topic-based or interaction-based communities in the network.
-4. Find users who are linked through common interests, shared hashtags, or repeated interaction patterns.
-5. Explore how a conversation or topic spreads through tweets and user interactions.
-
-These questions are valuable because they naturally exploit graph traversal and relationship-centric modeling.
-
-## Project Architecture
-A good project structure should separate the workflow into clear phases.
-
-### Phase 1: Study Neo4j
-Before implementing anything, prepare a compact DBMS study section that covers:
-- graph model and property graph concepts;
-- nodes, relationships, labels, and properties;
-- Cypher query language;
-- basic indexing and constraints;
-- Neo4j deployment modes relevant to the assignment.
-
-### Phase 2: Prepare the Dataset
-The data must be transformed into a format suitable for graph import. This often means building normalized CSV files for nodes and relationships separately.
-
-### Phase 3: Import the Data
-The graph should be loaded into Neo4j using CSV-based import. A common and recommended approach is to create nodes first and relationships after that, so edges can be created by matching existing identifiers.
-
-### Phase 4: Query and Analyze
-Run Cypher queries that answer the selected project questions and capture outputs for the presentation.
-
-### Phase 5: Discuss System Properties
-Prepare an oral explanation of import, scalability, distributed queries, availability, and consistency model in Neo4j.
-
-## Folder Structure Recommendation
-A practical folder organization could be the following:
+The repository is organised so that each stage of the workflow has a clear place:
 
 ```text
 project/
-├── README.md
-├── data/
-│   ├── raw/
-│   └── processed/
-├── cypher/
-│   ├── constraints.cypher
-│   ├── import_nodes.cypher
-│   ├── import_relationships.cypher
-│   └── analysis_queries.cypher
-├── notebooks/
-│   └── preprocessing.ipynb
-├── slides/
-│   └── presentation.pptx
-└── screenshots/
+  README.md                  # this file
+  logs.md                    # implementation log 
+  data/
+    raw/                     # original Higgs dataset files
+    processed/               # CSV files ready for Neo4j import
+  scripts/
+    build_higgs_csv.py      # Python script to build the CSVs
+  cypher/
+    constraints.cypher       # uniqueness constraints and indexes
+    importnodes.cypher       # LOAD CSV for User nodes
+    importrelationships.cypher # LOAD CSV for relationships
+    analysisqueries.cypher   # Cypher queries used in the analysis
+  screenshots/               # screenshots of query results and graph views
+  slides/
+    slides.md                # slide outline / speaker notes
+    presentation.pptx        # final slide deck 
 ```
 
-This structure makes the work easier to explain and keeps the oral presentation organized.
+---
 
-## Step-by-Step Execution Plan
+## 5. How to reproduce the project
 
-## Step 1: Define the Exact Scope
-The first concrete task is to write a short scope statement. This should answer:
-- Which Twitter entities will be modeled?
-- Which relationships will be included?
-- Which analysis questions will be answered?
-- Is the project a feasibility study or a prototype?
+This section describes how to go from the raw dataset to the final graph and analysis results.
 
-Recommended scope statement:
+### 5.1. Requirements
 
-> This project implements a Neo4j prototype for graph-based analysis of Twitter social network data. The prototype models users, tweets, and hashtags, imports data from CSV files, and answers social network analysis questions regarding influence, common topics, and user connectivity.
+- Neo4j Desktop or Neo4j Server (4.x or 5.x)
+- Python 3.x
+- Disk space for the Higgs dataset and processed CSVs
 
-This statement should appear almost unchanged in the presentation introduction.
+Optional:
 
-## Step 2: Choose the Data Source
-Choose one of the following and commit early:
-- Neo4j Twitter Graph Example dump or model inspiration.
-- Public Twitter-like CSV dataset.
-- Self-prepared CSV subset from a public source.
+- `pip install -r requirements.txt` if you decide to provide one for the preprocessing script.
 
-Selection criteria:
-- clean identifiers available;
-- easy conversion to CSV;
-- enough relational richness for graph analysis;
-- feasible within project time.
+### 5.2. Get the dataset
 
-If there is any uncertainty, use the Neo4j example as the baseline reference because it is directly aligned with the project topic.
+1. Download the Higgs Twitter dataset (edge lists).
+2. Place the original files into `data/raw/`.
 
-## Step 3: Design the Graph Schema
-Before loading any data, define the schema in one diagram or table. At minimum, specify:
-- node labels;
-- properties for each node;
-- relationship types;
-- relationship directions;
-- unique identifiers.
+You should have at least the edge lists for follower links and interaction events (retweets, replies, mentions).
 
-The key design rule is to give each entity a stable identifier. Neo4j imports become easier and safer when relationships are created using unique IDs rather than ambiguous names.
+### 5.3. Preprocess into CSV
 
-Recommended unique keys:
-- `User.userId`
-- `Tweet.tweetId`
-- `Hashtag.name`
+From the project root, run:
 
-## Step 4: Prepare the CSV Files
-Neo4j CSV import is easier when nodes and relationships are separated. Prepare files such as:
+```bash
+python scripts/preprocess_higgs.py
+```
+
+The script reads the edge lists in `data/raw/` and produces a set of CSV files in `data/processed/`, for example:
+
+- `users.csv`
+- `follows.csv`
+- `retweets.csv`
+- `replies.csv`
+- `mentions.csv`
+
+Each CSV has a stable schema and uses `userId` as the key so that Neo4j can link nodes and relationships consistently.
+
+### 5.4. Prepare Neo4j
+
+1. Create or open a Neo4j database.
+2. Copy the CSV files from `data/processed/` into the Neo4j `import` directory (or adjust the paths in the Cypher scripts to match your setup).
+
+### 5.5. Create constraints
+
+Open the Neo4j Browser (or use Cypher shell) and run the contents of:
 
 ```text
-users.csv
-tweets.csv
-hashtags.csv
-posted.csv
-mentions.csv
-tags.csv
+cypher/constraints.cypher
 ```
 
-Suggested columns:
+This script typically:
 
-### `users.csv`
-| Column | Meaning |
-|---|---|
-| `userId` | Unique user identifier |
-| `screenName` | Public handle |
-| `name` | Display name |
-| `followersCount` | Optional profile metric |
+- creates a uniqueness constraint on `User.userId`,
+- optionally creates supporting indexes.
 
-### `tweets.csv`
-| Column | Meaning |
-|---|---|
-| `tweetId` | Unique tweet identifier |
-| `text` | Tweet text |
-| `createdAt` | Timestamp |
-| `lang` | Language code |
-| `retweetCount` | Optional metric |
-| `likeCount` | Optional metric |
+These constraints prevent duplicates and make lookups during the import faster and safer.
 
-### `hashtags.csv`
-| Column | Meaning |
-|---|---|
-| `name` | Hashtag name |
+### 5.6. Import nodes
 
-### `posted.csv`
-| Column | Meaning |
-|---|---|
-| `userId` | Source user |
-| `tweetId` | Target tweet |
+Run:
 
-### `mentions.csv`
-| Column | Meaning |
-|---|---|
-| `tweetId` | Source tweet |
-| `userId` | Mentioned user |
-
-### `tags.csv`
-| Column | Meaning |
-|---|---|
-| `tweetId` | Source tweet |
-| `hashtagName` | Tagged hashtag |
-
-Important preprocessing tasks:
-- remove duplicates;
-- normalize hashtag text;
-- ensure no missing unique IDs;
-- clean malformed rows;
-- keep the schema consistent across all files.
-
-## Step 5: Create Constraints and Indexes
-This is a required quality step, not an optional optimization. Constraints improve data integrity and make it easier to explain the robustness of the import design.
-
-Example Cypher:
-
-```cypher
-CREATE CONSTRAINT user_id IF NOT EXISTS
-FOR (u:User) REQUIRE u.userId IS UNIQUE;
-
-CREATE CONSTRAINT tweet_id IF NOT EXISTS
-FOR (t:Tweet) REQUIRE t.tweetId IS UNIQUE;
-
-CREATE CONSTRAINT hashtag_name IF NOT EXISTS
-FOR (h:Hashtag) REQUIRE h.name IS UNIQUE;
+```text
+cypher/importnodes.cypher
 ```
 
-Why this matters:
-- prevents duplicates;
-- supports `MERGE` operations during import;
-- improves lookup efficiency for relationship creation.
+This script:
 
-## Step 6: Import Nodes First
-A widely recommended pattern with `LOAD CSV` is to import nodes before relationships. This is essential because relationship creation usually depends on matching already-created nodes by their unique identifiers.
+- uses `LOAD CSV WITH HEADERS`,
+- creates one `User` node per `userId`,
+- sets basic properties from `users.csv`.
 
-Example:
+At this point the database contains all users but no relationships.
 
-```cypher
-LOAD CSV WITH HEADERS FROM 'file:///users.csv' AS row
-MERGE (u:User {userId: row.userId})
-SET u.screenName = row.screenName,
-    u.name = row.name,
-    u.followersCount = toInteger(row.followersCount);
+### 5.7. Import relationships
+
+Run:
+
+```text
+cypher/importrelationships.cypher
 ```
 
-```cypher
-LOAD CSV WITH HEADERS FROM 'file:///tweets.csv' AS row
-MERGE (t:Tweet {tweetId: row.tweetId})
-SET t.text = row.text,
-    t.createdAt = row.createdAt,
-    t.lang = row.lang,
-    t.retweetCount = toInteger(row.retweetCount),
-    t.likeCount = toInteger(row.likeCount);
+This script:
+
+- loads each relationship CSV (`follows.csv`, `retweets.csv`, `replies.csv`, `mentions.csv`),
+- matches the corresponding `User` nodes by `userId`,
+- creates `FOLLOWS`, `RETWEETS`, `REPLIESTO`, `MENTIONS` relationships.
+
+Some imports may use batching or periodic commits if the files are large.
+
+### 5.8. Validate the graph
+
+Before running any analysis, validate the structure:
+
+- Count nodes and relationships:
+
+  ```cypher
+  MATCH (u:User) RETURN count(u) AS users;
+  MATCH ()-[r:FOLLOWS]->() RETURN count(r) AS follows;
+  MATCH ()-[r:RETWEETS]->() RETURN count(r) AS retweets;
+  MATCH ()-[r:REPLIESTO]->() RETURN count(r) AS replies;
+  MATCH ()-[r:MENTIONS]->() RETURN count(r) AS mentions;
+  ```
+
+- Inspect a small neighbourhood around a sample user in Neo4j Browser to make sure directions and labels look correct.
+
+---
+
+## 6. Analysis queries
+
+The analysis queries used in the project are collected in:
+
+```text
+cypher/analysisqueries.cypher
 ```
 
-```cypher
-LOAD CSV WITH HEADERS FROM 'file:///hashtags.csv' AS row
-MERGE (h:Hashtag {name: row.name});
-```
+They support the oral presentation by answering a few concrete questions.
 
-## Step 7: Import Relationships After Nodes
-Once nodes exist, relationships can be created by matching source and target entities.
+### 6.1. Most visible users
 
-Example:
+Two queries focus on visibility and centrality:
 
-```cypher
-LOAD CSV WITH HEADERS FROM 'file:///posted.csv' AS row
-MATCH (u:User {userId: row.userId})
-MATCH (t:Tweet {tweetId: row.tweetId})
-MERGE (u)-[:POSTED]->(t);
-```
+- most followed users (in-degree on `FOLLOWS`);
+- most mentioned users (incoming `MENTIONS`).
 
-```cypher
-LOAD CSV WITH HEADERS FROM 'file:///mentions.csv' AS row
-MATCH (t:Tweet {tweetId: row.tweetId})
-MATCH (u:User {userId: row.userId})
-MERGE (t)-[:MENTIONS]->(u);
-```
+These queries produce rankings that highlight users who are structurally central or frequently referenced in the interaction graph.
 
-```cypher
-LOAD CSV WITH HEADERS FROM 'file:///tags.csv' AS row
-MATCH (t:Tweet {tweetId: row.tweetId})
-MATCH (h:Hashtag {name: row.hashtagName})
-MERGE (t)-[:TAGS]->(h);
-```
+### 6.2. Strong interaction pairs
 
-This step is where the graph structure truly emerges. It is also one of the easiest points to discuss during the oral because it demonstrates how graph import differs from row-based table loading.
+Another query looks for pairs of users who interact repeatedly, combining:
 
-## Step 8: Validate the Imported Graph
-Do not move directly from import to analysis. First verify that the graph is structurally correct.
+- mentions,
+- replies,
+- retweets.
 
-Useful checks:
+The result is a list of user pairs with counts of interactions, which helps identify stronger local ties rather than isolated edges.
 
-```cypher
-MATCH (u:User) RETURN count(u);
-MATCH (t:Tweet) RETURN count(t);
-MATCH (h:Hashtag) RETURN count(h);
-MATCH ()-[r:POSTED]->() RETURN count(r);
-MATCH ()-[r:MENTIONS]->() RETURN count(r);
-MATCH ()-[r:TAGS]->() RETURN count(r);
-```
+### 6.3. Ego-network exploration
 
-Also inspect a sample subgraph visually in Neo4j Browser to ensure directions and labels are correct.
+A final query explores the ego-network around a chosen user:
 
-## Step 9: Implement the Analysis Queries
-This is the heart of the project. Prepare a small but well-justified set of queries.
+- finds the user,
+- fetches direct neighbours and relevant relationships,
+- returns a subgraph that can be visualised in Neo4j Browser.
 
-### Query 1: Most Mentioned Users
-```cypher
-MATCH (t:Tweet)-[:MENTIONS]->(u:User)
-RETURN u.screenName AS user, count(*) AS mentions
-ORDER BY mentions DESC
-LIMIT 10;
-```
-This query helps identify users with high visibility in the conversation graph.
+This query is used to generate a graph-view screenshot for the presentation and to illustrate how local graph exploration works in Neo4j.
 
-### Query 2: Most Common Hashtags
-```cypher
-MATCH (:Tweet)-[:TAGS]->(h:Hashtag)
-RETURN h.name AS hashtag, count(*) AS frequency
-ORDER BY frequency DESC
-LIMIT 10;
-```
-This query reveals the dominant discussion topics in the dataset.
+---
 
-### Query 3: Users Connected by Shared Hashtags
-```cypher
-MATCH (u1:User)-[:POSTED]->(:Tweet)-[:TAGS]->(h:Hashtag)<-[:TAGS]-(:Tweet)<-[:POSTED]-(u2:User)
-WHERE u1 <> u2
-RETURN u1.screenName AS user1, u2.screenName AS user2, count(DISTINCT h) AS commonTopics
-ORDER BY commonTopics DESC
-LIMIT 10;
-```
-This demonstrates a multi-hop traversal that is much more graph-native than a relational join-heavy equivalent.
+## 7. Main findings (for the oral)
 
-### Query 4: Hashtags Used by Many Distinct Users
-```cypher
-MATCH (u:User)-[:POSTED]->(:Tweet)-[:TAGS]->(h:Hashtag)
-RETURN h.name AS hashtag, count(DISTINCT u) AS distinctUsers
-ORDER BY distinctUsers DESC
-LIMIT 10;
-```
-This is useful for identifying broad cross-user topics rather than hashtags repeated by only a few active users.
+The project is not only about importing data. The following findings are discussed in the slides:
 
-### Query 5: Mentions Around a Specific User
-```cypher
-MATCH (u:User {screenName: $screenName})<-[r:MENTIONS]-(t:Tweet)-[:TAGS]->(h:Hashtag)
-RETURN h.name AS hashtag, count(*) AS frequency
-ORDER BY frequency DESC;
-```
-The Neo4j Twitter example includes similar patterns and can be used as inspiration for focused exploration queries.
+1. **Centrality and visibility**  
+   Some users stand out as particularly central or visible, based on follows and mentions.
 
-## Step 10: Prepare the DBMS Discussion for the Oral
-Even if the implementation is local and small, the oral must cover architectural points from the assignment.
+2. **Strong interaction patterns**  
+   Certain user pairs show repeated interactions across different relationship types, indicating stronger connections.
 
-### Data Import
-Neo4j supports several import approaches, including `LOAD CSV`, Data Importer, and administrative bulk loading workflows. For a course prototype, `LOAD CSV` is usually the most suitable because it is flexible, easy to explain, and directly expresses the mapping from CSV rows to graph entities.
+3. **Local graph structure**  
+   Ego-network visualisations around specific users give an intuitive view of their local neighbourhood and connections.
 
-### Scalability
-Neo4j can scale read workloads using clustered deployments with replicas, while the logical graph model remains the same. In the project discussion, it is enough to explain that the prototype was tested on a subset, but the same graph model could be scaled by moving to clustered deployment and separating read-heavy analytics from write coordination.
+These findings are summarised in more detail in `findings.md` and backed by screenshots in the `screenshots/` directory.
 
-### Distributed Queries
-Neo4j is not typically presented like a distributed SQL analytics engine such as Spark or Hive. Instead, its distributed story is centered on clustered architecture, routing, and replication rather than classic shared-nothing MPP query execution. This distinction is important and should be stated clearly in the oral.
+---
 
-### Availability
-Neo4j causal clustering is designed for fault-tolerant transaction processing through core servers, which are intended to keep the system operational under failures as long as quorum conditions are satisfied. This is the main point to present when discussing availability.
+## 8. Neo4j architecture
 
-### Consistency Model
-Neo4j uses causal clustering and supports read-your-write consistency via bookmarks, which is a more precise and technically correct statement than simply calling it eventual consistency. This is a high-value concept for the oral because it shows deeper understanding of the DBMS architecture.
+Although the prototype runs on a single Neo4j instance and a subset of the data, the oral exam includes a short discussion of how the same design could scale.
 
-## How to Explain Neo4j Causal Clustering
-A concise oral explanation can be structured like this:
-- writes are handled by the leader node in the cluster;
-- replicas help scale reads and improve resilience;
-- bookmarks allow clients to preserve read-your-write behavior;
-- because the system tracks causal order, Neo4j refers to this approach as causal clustering.
+The presentation covers:
 
-This short explanation is enough for a course oral unless the professor asks for more detail.
+- **Scalability**  
+  Neo4j can run in a cluster with core servers and read replicas, so the same graph model can handle larger datasets and more read-heavy workloads by adding replicas.
 
-## Feasibility vs Prototype vs Full Dataset
-The project should explicitly position itself in one of the assignment categories.
+- **Distributed querying**  
+  In a cluster, client drivers route queries to appropriate servers. Reads can go to replicas while writes go to cores, but from the application’s point of view there is still a single logical graph.
 
-Recommended wording:
-- **Primary claim**: this is a prototype implementation on a subset of the available data.
-- **Secondary claim**: the design is extensible to larger datasets through the same graph model and a more scalable Neo4j deployment strategy.
+- **Availability**  
+  Causal clustering and replication allow the system to survive node failures, as long as a quorum of core servers is available. Replicas improve read availability.
 
-This is a balanced position because it avoids overclaiming while still addressing scalability seriously.
+- **Consistency model**  
+  Neo4j provides read-your-write behaviour in a clustered setup using bookmarks, which encode the causal history of transactions.
 
-## What to Show During the Oral
-A strong oral presentation should include:
-- the project objective;
-- the reason for choosing Neo4j;
-- the graph data model;
-- the data import process;
-- examples of imported nodes and relationships;
-- 4 to 5 meaningful Cypher queries;
-- screenshots of graph exploration or tabular results;
-- a short architectural discussion on scalability, availability, and consistency.
-
-A very effective presentation sequence is:
-1. problem statement;
-2. why graph DBMS;
-3. schema;
-4. dataset preparation;
-5. import;
-6. query results;
-7. DBMS characteristics;
-8. limits and future work.
-
-## Limits to Acknowledge
-Acknowledging limits improves credibility. Good limitations to mention:
-- the prototype may use only a subset of Twitter data;
-- follower relationships may be incomplete or absent depending on the dataset;
-- the analysis is exploratory and not a full production social analytics platform;
-- advanced graph algorithms may be left as future work if the core project already satisfies the assignment.
-
-These are reasonable limits and do not weaken the project if the implementation is solid.
-
-## Possible Extensions
-If extra time is available, the following extensions can strengthen the project:
-- add `FOLLOWS` relationships for a richer social graph;
-- add `REPLIES_TO` and `RETWEETS` for conversation analysis;
-- compare two alternative schemas;
-- use Neo4j Bloom or Browser visualizations in the presentation;
-- add a small preprocessing script in Python to make the workflow reproducible.
-
-## Common Mistakes to Avoid
-- choosing too large a dataset and never finishing the import;
-- skipping data cleaning and then creating duplicate nodes;
-- using names instead of stable identifiers when unique IDs are available;
-- loading relationships before nodes;
-- presenting only screenshots with no clear analytical problem;
-- discussing scalability in vague terms without connecting it to Neo4j clustering.
-
-## Suggested Timeline
-A realistic timeline for the project is:
-
-| Week | Tasks |
-|---|---|
-| Week 1 | Study Neo4j basics, choose dataset, define scope and schema |
-| Week 2 | Prepare CSV files, clean data, define constraints |
-| Week 3 | Import nodes and relationships, validate graph |
-| Week 4 | Write analysis queries, collect screenshots and results |
-| Week 5 | Prepare scalability/consistency discussion and oral slides |
-
-This schedule is compact but feasible for a university project.
-
-## Deliverables Checklist
-Before considering the project complete, verify that all of the following are ready:
-
-- [ ] README with project description and steps
-- [ ] clear graph schema diagram or table
-- [ ] processed CSV files
-- [ ] Cypher script for constraints
-- [ ] Cypher scripts for node import
-- [ ] Cypher scripts for relationship import
-- [ ] Cypher file with analysis queries
-- [ ] screenshots of graph structure and query results
-- [ ] presentation slides for the oral
-- [ ] short section on scalability, distributed queries, availability, and consistency model
-
-## Final Recommended Narrative
-The project should be narrated as follows:
-
-> The project investigates Neo4j as a graph DBMS and applies it to Twitter social network analysis. The implementation models users, tweets, and hashtags as a property graph, imports data from CSV files into Neo4j, and answers social-network-oriented analytical questions through Cypher queries. The prototype is implemented on a subset of the data, while the discussion explains how Neo4j clustering, replication, and causal consistency would support larger and more available deployments.
-
-This narrative is technically coherent, aligned with the course requirements, and easy to defend during the oral.
+This part is explained conceptually in the slides rather than implemented in code.
